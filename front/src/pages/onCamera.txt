@@ -1,0 +1,17 @@
+function onCamera() {
+		if (recordStatus.value) return
+		showTools.value = false
+		uni.chooseImage({
+		count: 1,
+		sizeType: ['original'],
+		sourceType: ['camera'],
+		success: (res) => {
+			cropImageSrc.value = res.tempFilePaths[0]
+			cropMode.value = true
+		},
+		fail: () => {
+			// 用户取消拍照
+		}
+	})
+}
+

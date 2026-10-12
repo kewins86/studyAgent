@@ -1,0 +1,39 @@
+function onCropBoxTouchMove(e) {
+		if (!cropTouchStart) return
+		e.preventDefault?.()
+		const touch = e.touches[0]
+		const dx = touch.clientX - cropTouchStart.px
+		const dy = touch.clientY - cropTouchStart.py
+		const img = cropImgLayout.value
+		const minSize = 50 // 最小框选尺寸
+		const maxBottom = window.innerHeight - 120 // 底部留出按钮空间
+		let { boxX, boxY, boxW, boxH, mode } = cropTouchStart
+		let newX = boxX, newY = boxY, newW = boxW, newH = boxH
+
+		if (mode === 'move') {
+		newX = boxX + dx
+		newY = boxY + dy
+		newX = Math.max(img.x, Math.min(newX, img.x + img.w - boxW))
+		newY = Math.max(img.y, Math.min(newY, maxBottom - boxH))
+	} else if (mode === 'tl') {
+		newX = Math.max(img.x, Math.min(boxX + dx, boxX + boxW - minSize))
+		newY = Math.max(img.y, Math.min(boxY + dy, boxY + boxH - minSize))
+		newW = boxX + boxW - newX
+		newH = boxY + boxH - newY
+	} else if (mode === 'tr') {
+		newY = Math.max(img.y, Math.min(boxY + dy, boxY + boxH - minSize))
+		newW = Math.max(minSize, Math.min(boxW + dx, img.x + img.w - boxX))
+		newH = boxY + boxH - newY
+	} else if (mode === 'bl') {
+		newX = Math.max(img.x, Math.min(boxX + dx, boxX + boxW - minSize))
+		newW = boxX + boxW - newX
+		newH = Math.max(minSize, Math.min(boxH + dy, maxBottom - boxY))
+	} else if (mode === 'br') {
+		newW = Math.max(minSize, Math.min(boxW + dx, img.x + img.w - boxX))
+		newH = Math.max(minSize, Math.min(boxH + dy, maxBottom - boxY))
+	}
+
+		cropBox.value = { x: newX, y: newY, w: newW, h: newH }
+		updateCropBoxStyle()
+}
+

@@ -1,0 +1,36 @@
+async function fetchStepSummary(msgIndex) {
+	const msg = messages.value[msgIndex]
+	if (!msg || !msg.steps) return
+	msg.summaryLoading = true
+	msg.summary = null
+	try {
+		// 构造步骤数据
+		const stepsData = msg.steps.map(s => ({ question: s.question, answer: s.answer }))
+		const res = await apiChatSummary(msg.originalQuestion || '', stepsData)
+		const d = res && res.data ? res.data : res
+		if (d) {
+			msg.summary = {
+				points: d.points || '',
+				knowledge: d.knowledge || '',
+				tips: d.tips || ''
+			}
+		}
+	} catch (e) {
+		console.error('[chat] 总结生成失败:', e)
+		msg.summary = { points: '总结生成失败，可稍后重试', knowledge: '', tips: '' }
+	} finally {
+		msg.summaryLoading = false
+		scrollToBottom()
+	}
+}
+
+// ========== 拍照框选裁剪 ==========
+const cropMode = ref(false)
+const cropImageSrc = ref('')
+const cropping = ref(false)
+// 框选框位置（px，相对于屏幕）
+const cropBox = ref({ x: 50, y: 200, w: 250, h: 200 })
+// 图片实际渲染尺寸和偏移
+const cropImgLayout = ref({ x: 0, y: 0, w: 0, h: 0, natW: 0, natH: 0 })
+
+const cropBoxStyle = ref('')

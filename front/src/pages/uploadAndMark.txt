@@ -1,0 +1,44 @@
+async function uploadAndMark(item, filePath) {
+	// #ifdef H5
+	try {
+		const blob = await (await fetch(filePath)).blob()
+		const reader = new FileReader()
+		reader.onload = async () => {
+			const dataUrl = reader.result
+			try {
+				const res = await markHomeworkItemDone(item.id, { doneImage: dataUrl })
+				if (res.code === 0) {
+					uni.showToast({ title: '完成！' })
+					loadData()
+				}
+			} catch (e) {
+				uni.showToast({ title: '操作失败', icon: 'none' })
+			}
+		}
+		reader.readAsDataURL(blob)
+	} catch (e) {
+		uni.showToast({ title: '图片读取失败', icon: 'none' })
+	}
+	// #endif
+	// #ifndef H5
+	try {
+		const r = await new Promise((resolve, reject) => {
+			uni.getFileSystemManager().readFile({
+				filePath,
+				encoding: 'base64',
+				success: resolve,
+				fail: reject
+			})
+		})
+		const b64 = 'data:image/jpeg;base64,' + r.data
+		const res = await markHomeworkItemDone(item.id, { doneImage: b64 })
+		if (res.code === 0) {
+			uni.showToast({ title: '完成！' })
+			loadData()
+		}
+	} catch (e) {
+		uni.showToast({ title: '操作失败', icon: 'none' })
+	}
+	// #endif
+}
+

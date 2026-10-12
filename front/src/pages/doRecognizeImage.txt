@@ -1,0 +1,46 @@
+async function doRecognizeImage(filePath) {
+	recognizing.value = true
+	try {
+		// #ifdef H5
+		const blob = await (await fetch(filePath)).blob()
+		const base64 = await new Promise((resolve) => {
+			const reader = new FileReader()
+			reader.onload = () => {
+				const dataUrl = reader.result
+				const b64 = dataUrl.split(',')[1]
+				resolve(b64)
+			}
+			reader.readAsDataURL(blob)
+		})
+		const res = await recognizeHomework({ image: base64 })
+		// #endif
+		// #ifndef H5
+		const r = await new Promise((resolve, reject) => {
+			uni.getFileSystemManager().readFile({
+				filePath,
+				encoding: 'base64',
+				success: resolve,
+				fail: reject
+			})
+		})
+		const res = await recognizeHomework({ image: r.data })
+		// #endif
+		if (res.code === 0 && res.data && res.data.length > 0) {
+			recognized.value = res.data.map(d => ({
+				subject: d.subject || '语文',
+				itemType: d.itemType || 'written',
+				content: d.content || ''
+			}))
+		} else if (res.code === 0 && (!res.data || res.data.length === 0)) {
+			uni.showToast({ title: '未识别到家作内容', icon: 'none' })
+		} else {
+			uni.showToast({ title: res.message || '识别失败', icon: 'none' })
+		}
+	} catch (e) {
+		console.log('recognize err', e)
+		uni.showToast({ title: '识别失败，请重试或手动录入', icon: 'none' })
+	} finally {
+		recognizing.value = false
+	}
+}
+

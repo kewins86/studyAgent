@@ -1,0 +1,12 @@
+async function onDone(item) {
+	try {
+		const res = await markHomeworkItemDone(item.id)
+		if (res.code === 0) {
+			uni.showToast({ title: '完成！' })
+			loadData()
+		}
+	} catch (e) {
+		uni.showToast({ title: '操作失败', icon: 'none' })
+	}
+}
+

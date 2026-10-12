@@ -1,0 +1,6 @@
+function cancelCrop() {
+		cropMode.value = false
+		cropImageSrc.value = ''
+		cropping.value = false
+}
+

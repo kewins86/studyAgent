@@ -1,0 +1,43 @@
+function startStepRecording(msgIndex, stepIndex) {
+		const msg = messages.value[msgIndex]
+		const step = msg.steps[stepIndex]
+		step.recording = true
+		step.voiceText = ''
+		step.hint = ''
+		stepRecordingPos.value = { msgIndex, stepIndex }
+
+		// #ifdef H5
+		let stepAccumulated = ''
+		startH5Recording(
+			(text) => {
+				stepAccumulated += text
+				step.voiceText = stepAccumulated
+			},
+			() => {
+				// WS 关闭后自动提交
+				if (step.voiceText && step.voiceText.trim()) {
+					submitStepAnswer(msgIndex, stepIndex)
+				} else {
+					step.checking = false
+					step.voiceText = ''
+					uni.showToast({ title: '没听清，请重试', icon: 'none' })
+				}
+			}
+		)
+		// #endif
+
+		// #ifndef H5
+		if (!recorderManager) {
+			uni.showToast({ title: '当前环境不支持录音', icon: 'none' })
+			step.recording = false
+			return
+		}
+		recorderManager.start({
+			format: 'aac',
+			sampleRate: 16000,
+			numberOfChannels: 1,
+			encodeBitRate: 32000
+		})
+		// #endif
+}
+

@@ -1,0 +1,107 @@
+function confirmCrop() {
+		if (cropping.value) return
+		cropping.value = true
+		const img = cropImgLayout.value
+		const box = cropBox.value
+	// 计算框选区域相对于图片的比例
+		const sx = (box.x - img.x) / img.w
+		const sy = (box.y - img.y) / img.h
+		const sw = box.w / img.w
+		const sh = box.h / img.h
+
+	// H5 端用原生 canvas 裁剪
+		try {
+		// uni-app <image> 在 H5 渲染为 <uni-image>，需取内部真实 <img>
+		let imageEl = document.querySelector('.crop-image img')
+		if (!imageEl) {
+			const uniImg = document.querySelector('.crop-image')
+			if (uniImg && uniImg.querySelector) {
+				imageEl = uniImg.querySelector('img')
+			}
+		}
+		// 也可能直接就是 <img>（某些平台）
+		if (!imageEl) {
+			imageEl = document.querySelector('.crop-image')
+		}
+		console.log('[chat] confirmCrop imageEl:', imageEl ? imageEl.tagName : 'null', 'naturalWidth:', imageEl ? imageEl.naturalWidth : 'N/A')
+		if (imageEl && imageEl.naturalWidth) {
+			const natW = imageEl.naturalWidth
+			const natH = imageEl.naturalHeight
+			const canvas = document.createElement('canvas')
+			canvas.width = Math.round(natW * sw)
+			canvas.height = Math.round(natH * sh)
+			const ctx = canvas.getContext('2d')
+			ctx.drawImage(imageEl, natW * sx, natH * sy, natW * sw, natH * sh, 0, 0, canvas.width, canvas.height)
+			const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
+			const base64 = dataUrl.split(',')[1]
+			cropMode.value = false
+			cropImageSrc.value = ''
+			cropping.value = false
+			sendImage(dataUrl, base64)
+			return
+		}
+	} catch (e) {
+		console.error('[chat] H5 canvas 試裁剪失敗，fallback 用原圖', e)
+	}
+	// fallback: 直接用 cropImageSrc 原圖發送（不裁剪）
+		if (cropImageSrc.value) {
+		cropMode.value = false
+		cropping.value = false
+		const origUrl = cropImageSrc.value
+		cropImageSrc.value = ''
+		const base64Orig = origUrl.split(',')[1]
+		if (base64Orig) {
+			console.log('[chat] fallback 發送原圖')
+			sendImage(origUrl, base64Orig)
+			return
+		}
+	}
+		cropping.value = false
+		uni.showToast({ title: '图片裁剪失败，请重试', icon: 'none' })
+		return
+}
+
+// ========== 语音录音状态 ==========
+const isRecording = ref(false)
+const recordStatus = ref('') // 'recording' | 'transcribing' | ''
+
+// #ifndef H5
+const recorderManager = uni.getRecorderManager ? uni.getRecorderManager() : null
+
+// 录音完成回调
+if (recorderManager) recorderManager.onStop((res) => {
+		console.log('[录音] 结束', res.tempFilePath, '时长', res.duration)
+		if (res.duration < 500) {
+		// 小于500ms视为误触
+		recordStatus.value = ''
+		isRecording.value = false
+		showTools.value = false
+		return
+	}
+		// 判断是引导步骤录音还是底部语音输入
+		if (stepRecordingPos.value) {
+			onStepRecorderStop(res.tempFilePath)
+		} else {
+			recordStatus.value = 'transcribing'
+			transcribeAudio(res.tempFilePath)
+		}
+})
+
+if (recorderManager) recorderManager.onError((err) => {
+		console.error('[录音] 错误', err)
+		uni.showToast({ title: '录音失败：' + err.errMsg, icon: 'none' })
+		recordStatus.value = ''
+		isRecording.value = false
+})
+// #endif
+
+// #ifdef H5
+let h5AudioContext = null
+let h5MediaStream = null
+let h5ScriptProcessor = null
+let h5PcmChunks = []
+let h5RecordStartTime = 0
+let h5StreamSigPromise = null
+let h5StreamOnResult = null
+let h5StreamOnDone = null
+

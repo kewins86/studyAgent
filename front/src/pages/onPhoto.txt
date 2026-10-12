@@ -1,0 +1,44 @@
+function onPhoto() {
+		if (recordStatus.value) return
+		showTools.value = false
+		uni.chooseImage({
+		count: 1,
+		sizeType: ['compressed'],
+		sourceType: ['album', 'camera'],
+		success: (res) => {
+			const tempPath = res.tempFilePaths[0]
+			// #ifdef H5
+			const xhr = new XMLHttpRequest()
+			xhr.open('GET', tempPath, true)
+			xhr.responseType = 'blob'
+			xhr.onload = () => {
+				const reader = new FileReader()
+				reader.onload = () => {
+					const dataUrl = reader.result
+					const base64 = dataUrl.split(',')[1]
+					sendImage(dataUrl, base64)
+				}
+				reader.readAsDataURL(xhr.response)
+			}
+			xhr.send()
+			// #endif
+			// #ifndef H5
+			uni.getFileSystemManager().readFile({
+				filePath: tempPath,
+				encoding: 'base64',
+				success: (fileRes) => {
+					const dataUrl = 'data:image/jpeg;base64,' + fileRes.data
+					sendImage(dataUrl, fileRes.data)
+				},
+				fail: () => {
+					uni.showToast({ title: '图片读取失败', icon: 'none' })
+				}
+			})
+			// #endif
+		},
+		fail: () => {
+			// 用户取消选择，不做处理
+		}
+	})
+}
+

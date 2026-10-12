@@ -1,0 +1,10 @@
+function startLoadingText() {
+	loadingText.value = "正在分析题目…"
+	let step = 0
+	clearInterval(loadingTimer)
+	loadingTimer = setInterval(() => {
+		step++
+		if (step === 1) loadingText.value = "正在准备引导问题…"
+		else if (step === 2) loadingText.value = "马上就好…"
+	}, 2000)
+}

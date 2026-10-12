@@ -1,0 +1,21 @@
+function pcmToBase64(pcmData) {
+		const bytes = new Uint8Array(pcmData.buffer)
+		let binary = ''
+		for (let i = 0; i < bytes.byteLength; i++) {
+		binary += String.fromCharCode(bytes[i])
+	}
+		return btoa(binary)
+}
+// #endif
+
+const suggestTags = ['4×6÷3 怎么算？', '两位数乘法', '周长怎么求？']
+
+function pcmToBase64(pcmData) {
+	const bytes = new Uint8Array(pcmData.buffer)
+	let binary = ''
+	for (let i = 0; i < bytes.byteLength; i++) {
+		binary += String.fromCharCode(bytes[i])
+	}
+	return btoa(binary)
+}
+

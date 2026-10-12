@@ -1,0 +1,16 @@
+function stopLoadingText() {
+	clearInterval(loadingTimer)
+	loadingTimer = null
+}
+const sessionId = ref(uni.getStorageSync('chatSessionId') || null)
+const messages = ref([
+	{ role: 'assistant', content: '你好呀！我是问知晓鹿，今天想学点什么？' }
+])
+const scrollInto = ref('')
+const showTools = ref(false)
+
+// ========== 语音播放（TTS）==========
+let currentAudio = null  // 当前播放的音频上下文
+let currentPlayingText = ''  // 当前正在播放的文本（用于 toggle 判断）
+
+/** 把文字转成语音播放（后端 edge-tts → mp3 → 播放） */

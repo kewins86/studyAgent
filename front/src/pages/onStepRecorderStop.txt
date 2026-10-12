@@ -1,0 +1,11 @@
+function onStepRecorderStop(filePath) {
+		if (!stepRecordingPos.value) return
+		const { msgIndex, stepIndex } = stepRecordingPos.value
+		const msg = messages.value[msgIndex]
+		const step = msg.steps[stepIndex]
+		step.checking = true
+		stepRecordingPos.value = null
+		transcribeAudioForStep(filePath, msgIndex, stepIndex)
+}
+
+// 讯飞 ASR 转写，结果写入步骤并自动提交

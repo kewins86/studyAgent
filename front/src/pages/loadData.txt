@@ -1,0 +1,12 @@
+async function loadData() {
+	try {
+		const res = await getTodayHomework()
+		// request() resolve 出的直接是 JSON 对象，不是 res.data
+		if (res.code === 0 && res.data) {
+			items.value = res.data.items || []
+		}
+	} catch (e) {
+		console.log('loadHw err', e)
+	}
+}
+

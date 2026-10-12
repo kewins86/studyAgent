@@ -1,0 +1,3 @@
+-- V124: students 表的登录认证列（phone / password_hash）已由 V3__add_auth_to_students 创建，
+-- 此处不再重复 ADD（H2 的 IF NOT EXISTS 会静默跳过，MySQL 会报 Duplicate column）。
+-- 保留该迁移文件仅为了版本号连续，实际无 SQL 需执行。

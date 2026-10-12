@@ -1,0 +1,5 @@
+function typeLabel(t) {
+	const found = typeOptions.find(o => o.value === t)
+	return found ? found.label : '书面'
+}
+

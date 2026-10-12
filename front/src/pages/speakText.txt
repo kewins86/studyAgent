@@ -1,0 +1,63 @@
+async function speakText(text) {
+	// 如果正在播放，先停止（toggle 行为）
+	if (currentAudio) {
+		currentAudio.stop()
+		currentAudio = null
+		if (currentPlayingText === text) {
+			currentPlayingText = ''
+			return  // 点的是正在播放的，停止即可
+		}
+		currentPlayingText = ''
+	}
+
+	uni.showLoading({ title: '语音合成中…' })
+	try {
+		const res = await apiTts(text)
+		const d = res && res.data ? res.data : res
+		if (!d || !d.audio) {
+			uni.showToast({ title: '语音合成失败', icon: 'none' })
+			return
+		}
+
+		// base64 → 临时文件 → 播放（全端兼容）
+		const audioPath = `${uni.getSystemInfoSync().platform === 'ios' ? '' : ''}data:audio/mp3;base64,${d.audio}`
+
+		currentAudio = uni.createInnerAudioContext()
+		// #ifdef H5
+		currentAudio.src = audioPath
+		// #endif
+		// #ifndef H5
+		// App/小程序：写临时文件再播放
+		const fs = uni.getFileSystemManager ? uni.getFileSystemManager() : null
+		if (fs) {
+			const tmpPath = `${wx.env.USER_DATA_PATH || ''}/tts_${Date.now()}.mp3`
+			fs.writeFileSync(tmpPath, uni.base64ToArrayBuffer(d.audio), 'binary')
+			currentAudio.src = tmpPath
+		} else {
+			currentAudio.src = audioPath
+		}
+		// #endif
+
+		currentPlayingText = text
+		currentAudio.onEnded(() => {
+			currentAudio = null
+			currentPlayingText = ''
+		})
+		currentAudio.onError((err) => {
+			console.error('[TTS] 播放错误:', err)
+			currentAudio = null
+			currentPlayingText = ''
+			uni.showToast({ title: '播放失败', icon: 'none' })
+		})
+		currentAudio.play()
+	} catch (e) {
+		console.error('[TTS] 请求失败:', e)
+		uni.showToast({ title: '语音服务暂不可用', icon: 'none' })
+	} finally {
+		uni.hideLoading()
+	}
+}
+
+// ========== 交互式分步解题 ==========
+
+/** 把 LLM 返回的 JSON 数组解析成步骤数组 */

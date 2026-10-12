@@ -1,0 +1,18 @@
+function onRecognizeCamera() {
+	if (recordStatus.value) return
+	uni.chooseImage({
+		count: 1,
+		sizeType: ['original'],
+		sourceType: ['camera'],
+		success: async (res) => {
+			const tempPath = res.tempFilePaths[0]
+			uni.compressImage({
+				src: tempPath,
+				quality: 50,
+				success: async (cres) => { await doRecognizeImage(cres.tempFilePath) },
+				fail: async () => { await doRecognizeImage(tempPath) }
+			})
+		}
+	})
+}
+

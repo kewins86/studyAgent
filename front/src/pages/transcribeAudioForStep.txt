@@ -1,0 +1,206 @@
+async function transcribeAudioForStep(audioSource, msgIndex, stepIndex) {
+		const msg = messages.value[msgIndex]
+		const step = msg.steps[stepIndex]
+		try {
+			const sigRes = await getAsrSignature()
+			if (!sigRes || sigRes.code !== 0) {
+				throw new Error('获取签名失败')
+			}
+			const sig = sigRes.data
+
+			let audioBase64
+			if (typeof audioSource === 'string' && (audioSource.startsWith('/') || audioSource.startsWith('http'))) {
+				audioBase64 = await readFileToBase64(audioSource)
+			} else {
+				audioBase64 = audioSource
+			}
+
+			const wsUrl = `wss://${sig.host}${sig.path}?authorization=${encodeURIComponent(sig.authorization)}&date=${encodeURIComponent(sig.date)}&host=${encodeURIComponent(sig.host)}`
+
+			let ws
+			let resultText = ''
+
+			// #ifdef H5
+			ws = new WebSocket(wsUrl)
+			ws.onopen = () => {
+				const firstFrame = {
+					common: { app_id: sig.appId },
+					business: {
+						domain: 'iat',
+						language: 'zh_cn',
+						accent: 'mandarin',
+						vad_eos: 2000,
+						dwa: 'wpgs'
+					},
+					data: {
+						status: 0,
+						format: 'audio/L16;rate=16000',
+						encoding: 'raw',
+						audio: audioBase64.substring(0, Math.min(audioBase64.length, 12288))
+					}
+				}
+				ws.send(JSON.stringify(firstFrame))
+
+				let offset = 12288
+				const chunkSize = 12288
+				while (offset < audioBase64.length) {
+					const chunk = audioBase64.substring(offset, offset + chunkSize)
+					const isLast = offset + chunkSize >= audioBase64.length
+					ws.send(JSON.stringify({
+						data: {
+							status: isLast ? 2 : 1,
+							format: 'audio/L16;rate=16000',
+							encoding: 'raw',
+							audio: chunk
+						}
+					}))
+					offset += chunkSize
+				}
+				if (audioBase64.length <= 12288) {
+					ws.send(JSON.stringify({
+						data: {
+							status: 2,
+							format: 'audio/L16;rate=16000',
+							encoding: 'raw',
+							audio: ''
+						}
+					}))
+				}
+			}
+			ws.onmessage = (event) => {
+				const data = JSON.parse(event.data)
+				if (data.code && data.code !== 0) {
+					console.error('[ASR-Step] 讯飞错误码:', data.code, data.message)
+					return
+				}
+				if (data.data && data.data.result) {
+					const wsResult = data.data.result
+					if (wsResult.ws) {
+						let text = ''
+						wsResult.ws.forEach(cw => {
+							cw.cw.forEach(w => {
+								text += w.w
+							})
+						})
+						resultText = text
+					}
+				}
+			}
+			ws.onerror = (err) => {
+				console.error('[ASR-Step] WebSocket 错误', err)
+				step.checking = false
+				uni.showToast({ title: '语音识别失败', icon: 'none' })
+			}
+			ws.onclose = () => {
+				console.log('[ASR-Step] WebSocket 关闭，结果：', resultText)
+				if (resultText.trim()) {
+					step.voiceText = resultText.trim()
+					// 自动提交判断
+					submitStepAnswer(msgIndex, stepIndex)
+				} else {
+					step.checking = false
+					uni.showToast({ title: '没听清，请重试', icon: 'none' })
+				}
+			}
+			// #endif
+
+			// #ifndef H5
+			ws = uni.connectSocket({
+				url: wsUrl,
+				protocols: ['binary']
+			})
+
+			ws.onOpen(() => {
+				const firstFrame = {
+					common: { app_id: sig.appId },
+					business: {
+						domain: 'iat',
+						language: 'zh_cn',
+						accent: 'mandarin',
+						vad_eos: 2000,
+						dwa: 'wpgs'
+					},
+					data: {
+						status: 0,
+						format: 'audio/L16;rate=16000',
+						encoding: 'raw',
+						audio: audioBase64.substring(0, Math.min(audioBase64.length, 12288))
+					}
+				}
+				ws.send({ data: JSON.stringify(firstFrame) })
+
+				let offset = 12288
+				const chunkSize = 12288
+				while (offset < audioBase64.length) {
+					const chunk = audioBase64.substring(offset, offset + chunkSize)
+					const isLast = offset + chunkSize >= audioBase64.length
+					ws.send({ data: JSON.stringify({
+						data: {
+							status: isLast ? 2 : 1,
+							format: 'audio/L16;rate=16000',
+							encoding: 'raw',
+							audio: chunk
+						}
+					}) })
+					offset += chunkSize
+				}
+				if (audioBase64.length <= 12288) {
+					ws.send({ data: JSON.stringify({
+						data: {
+							status: 2,
+							format: 'audio/L16;rate=16000',
+							encoding: 'raw',
+							audio: ''
+						}
+					}) })
+				}
+			})
+
+			ws.onMessage((res) => {
+				const data = JSON.parse(res.data)
+				if (data.code && data.code !== 0) {
+					console.error('[ASR-Step] 讯飞错误码:', data.code, data.message)
+					return
+				}
+				if (data.data && data.data.result) {
+					const wsResult = data.data.result
+					if (wsResult.ws) {
+						let text = ''
+						wsResult.ws.forEach(cw => {
+							cw.cw.forEach(w => {
+								text += w.w
+							})
+						})
+						resultText = text
+					}
+				}
+				if (data.data && data.data.status === 2) {
+					ws.close()
+				}
+			})
+
+			ws.onError((err) => {
+				console.error('[ASR-Step] WebSocket 错误', err)
+				step.checking = false
+				uni.showToast({ title: '语音识别失败', icon: 'none' })
+			})
+
+			ws.onClose(() => {
+				console.log('[ASR-Step] WebSocket 关闭，结果：', resultText)
+				if (resultText.trim()) {
+					step.voiceText = resultText.trim()
+					submitStepAnswer(msgIndex, stepIndex)
+				} else {
+					step.checking = false
+					uni.showToast({ title: '没听清，请重试', icon: 'none' })
+				}
+			})
+			// #endif
+
+		} catch (e) {
+			console.error('[ASR-Step] 转写失败', e)
+			step.checking = false
+			uni.showToast({ title: '语音识别失败', icon: 'none' })
+		}
+}
+

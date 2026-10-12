@@ -1,0 +1,7 @@
+function closeTools() {
+		if (recordStatus.value === 'recording' || recordStatus.value === 'transcribing') return
+		showTools.value = false
+}
+
+// ========== 语音点击切换逻辑 ==========
+// #ifdef H5

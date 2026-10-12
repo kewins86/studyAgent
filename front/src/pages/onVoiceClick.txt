@@ -1,0 +1,48 @@
+function onVoiceClick() {
+		if (recordStatus.value === 'transcribing') return
+	// #ifdef H5
+		if (isRecording.value) {
+		stopH5Recording()
+	} else {
+		// 底部语音：实时结果填入输入框，WS 关闭后自动 send
+		let accumulated = ''
+		startH5Recording(
+			(text) => { accumulated += text; question.value = accumulated },
+			() => {
+				recordStatus.value = ''
+				isRecording.value = false
+				showTools.value = false
+				if (question.value.trim()) {
+					send()
+				} else {
+					uni.showToast({ title: '没听清，请重试', icon: 'none' })
+				}
+			}
+		)
+	}
+	// #endif
+
+	// #ifndef H5
+		if (!recorderManager) {
+		uni.showToast({ title: '当前环境不支持录音', icon: 'none' })
+		return
+	}
+		if (isRecording.value) {
+		isRecording.value = false
+		recorderManager.stop()
+		console.log('[录音] 停止')
+	} else {
+		isRecording.value = true
+		recordStatus.value = 'recording'
+		recorderManager.start({
+			format: 'aac',
+			sampleRate: 16000,
+			numberOfChannels: 1,
+			encodeBitRate: 32000
+		})
+		console.log('[录音] 开始')
+	}
+	// #endif
+}
+
+// ========== 讯飞 ASR 转写 ==========

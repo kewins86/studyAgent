@@ -1,0 +1,32 @@
+function parseSteps(text) {
+		if (!text) return null
+		try {
+		let cleaned = text.trim()
+		// 剥掉可能的 ```json 代码块包裹
+		cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim()
+		const parsed = JSON.parse(cleaned)
+		// 兼容两种格式：直接数组 [{...}] 或 {steps: [...]}
+		const arr = Array.isArray(parsed) ? parsed : (parsed.steps || parsed.data || null)
+		if (!Array.isArray(arr) || arr.length === 0) return null
+		// 校验每步必须有 question 和 answer
+		const steps = arr.map(s => ({
+			question: s.question || '',
+			answer: s.answer || '',
+			voiceText: '',
+			recording: false,
+			checking: false,
+			hint: '',
+			solved: false
+		}))
+		return steps
+	} catch (e) {
+		console.log('[chat] parseSteps: 非 JSON 格式，降级普通文本')
+		return null
+	}
+}
+
+/** 提交某一步的学生答案，调后端判断对错 */
+// ========== 引导步骤语音输入 ==========
+// 当前正在录音的步骤位置
+const stepRecordingPos = ref(null) // {msgIndex, stepIndex}
+

@@ -1,0 +1,25 @@
+async function submitRecognized() {
+	const valid = recognized.value.filter(r => r.content && r.content.trim())
+	if (!valid.length) {
+		uni.showToast({ title: '请填写作业内容', icon: 'none' })
+		return
+	}
+	try {
+		const res = await submitHomeworkItems(valid)
+		if (res.code === 0) {
+			uni.showToast({ title: '录入成功' })
+			showAdd.value = false
+			recognized.value = []
+			loadData()
+		} else {
+			uni.showToast({ title: res.message || '录入失败', icon: 'none' })
+		}
+	} catch (e) {
+		uni.showToast({ title: '录入失败', icon: 'none' })
+	}
+}
+
+// ============ 以下为隐藏的手写识别（手动录入）代码 — 暂时隐藏，不删除 ============
+// const manualMode = ref(false)
+// const addRows = ref([{ subject: '语文', itemType: 'written', content: '' }])
+//

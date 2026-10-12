@@ -1,0 +1,291 @@
+function goBack() {
+	uni.navigateBack({ delta: 1 })
+}
+
+onShow(() => { loadData() })
+onMounted(() => { loadData() })
+</script>
+
+<style scoped>
+.hw-page {
+	min-height: 100vh;
+	background: #f7f8fa;
+	box-sizing: border-box;
+	padding-bottom: 40rpx;
+}
+.nav-bar {
+	padding: calc(20rpx + env(safe-area-inset-top)) 32rpx 20rpx;
+	background: #ffffff;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+.nav-left, .nav-right {
+	width: 60rpx;
+	display: flex;
+	align-items: center;
+}
+.nav-back {
+	font-size: 44rpx;
+	color: #1f2937;
+	line-height: 1;
+}
+.nav-title {
+	font-size: 34rpx;
+	font-weight: 700;
+	color: #1f2937;
+	text-align: center;
+}
+.hw-date {
+	display: block;
+	font-size: 26rpx;
+	color: #9ca3af;
+	margin: 20rpx 32rpx 24rpx;
+}
+.hw-list {
+	display: flex;
+	flex-direction: column;
+	gap: 20rpx;
+	padding: 0 32rpx;
+}
+.hw-card {
+	background: #fff;
+	border-radius: 20rpx;
+	padding: 28rpx;
+}
+.hw-card-done {
+	opacity: 0.65;
+}
+.hw-card-top {
+	display: flex;
+	align-items: center;
+	gap: 12rpx;
+	margin-bottom: 16rpx;
+}
+.hw-subject-tag {
+	font-size: 22rpx;
+	padding: 4rpx 16rpx;
+	border-radius: 8rpx;
+	color: #fff;
+}
+.tag-语文 { background: #ef4444; }
+.tag-数学 { background: #3b82f6; }
+.tag-英语 { background: #10b981; }
+.hw-type {
+	font-size: 22rpx;
+	color: #9ca3af;
+}
+.hw-status {
+	margin-left: auto;
+	font-size: 24rpx;
+	color: #f0a000;
+}
+.st-done {
+	color: #10b981;
+}
+.hw-content {
+	font-size: 30rpx;
+	color: #1a1a1a;
+	line-height: 1.6;
+}
+.hw-done-imgs {
+	margin-top: 16rpx;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12rpx;
+}
+.hw-done-img {
+	width: 200rpx;
+	border-radius: 12rpx;
+}
+.hw-audio-tag {
+	margin-top: 12rpx;
+	font-size: 24rpx;
+	color: #3b82f6;
+}
+.hw-actions {
+	margin-top: 20rpx;
+	display: flex;
+	gap: 16rpx;
+	flex-wrap: wrap;
+}
+.hw-all-done {
+	text-align: center;
+	padding: 40rpx;
+	font-size: 32rpx;
+	color: #10b981;
+}
+.hw-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 20rpx;
+	padding: 120rpx 0;
+}
+.hw-empty-icon {
+	font-size: 80rpx;
+}
+.hw-empty-text {
+	font-size: 28rpx;
+	color: #9ca3af;
+}
+.hw-empty-btn {
+	background: #f0a000;
+	color: #fff;
+	border: none;
+	border-radius: 40rpx;
+	padding: 0 48rpx;
+	font-size: 28rpx;
+}
+.hw-add-mask {
+	position: fixed;
+	top: 0; left: 0; right: 0; bottom: 0;
+	background: rgba(0,0,0,0.4);
+	z-index: 999;
+	display: flex;
+	align-items: flex-end;
+}
+.hw-add-sheet {
+	width: 100%;
+	background: #fff;
+	border-radius: 32rpx 32rpx 0 0;
+	padding: 32rpx;
+	max-height: 80vh;
+	overflow-y: auto;
+}
+.hw-add-title {
+	font-size: 34rpx;
+	font-weight: 700;
+	margin-bottom: 24rpx;
+}
+.hw-add-row {
+	display: flex;
+	gap: 12rpx;
+	align-items: center;
+	margin-bottom: 16rpx;
+}
+.hw-add-subject {
+	width: 120rpx;
+}
+.hw-add-type {
+	width: 120rpx;
+}
+.hw-picker-display {
+	height: 60rpx;
+	line-height: 60rpx;
+	text-align: center;
+	border: 1px solid #e5e7eb;
+	border-radius: 8rpx;
+	font-size: 26rpx;
+	color: #374151;
+}
+.hw-add-content {
+	flex: 1;
+	border: 1px solid #e5e7eb;
+	border-radius: 8rpx;
+	padding: 12rpx;
+	font-size: 26rpx;
+}
+.hw-add-del {
+	color: #ef4444;
+	font-size: 32rpx;
+	padding: 8rpx;
+}
+.hw-add-submit {
+	margin-top: 24rpx;
+	background: #f0a000;
+	color: #fff;
+	border: none;
+	border-radius: 40rpx;
+}
+.hw-recognizing {
+	display: flex;
+	justify-content: center;
+	padding: 60rpx 0;
+}
+.hw-spin {
+	font-size: 30rpx;
+	color: #9ca3af;
+}
+.hw-recognized {
+	padding: 16rpx 0;
+}
+.hw-recognized .hw-add-row {
+	margin-bottom: 16rpx;
+}
+.hw-add-actions {
+	display: flex;
+	gap: 16rpx;
+	margin-top: 24rpx;
+}
+.hw-add-retry {
+	background: #e5e7eb;
+	color: #374151;
+	border: none !important;
+	border-radius: 40rpx !important;
+	flex: 1;
+}
+.hw-recognized .hw-add-submit {
+	flex: 1;
+	margin-top: 0;
+}
+
+/* 录入方式工具栏：语音 / 拍照 / 照片（与 chat 页一致） */
+.hw-toolbar {
+	display: flex;
+	justify-content: space-around;
+	padding: 20rpx 0 10rpx;
+}
+.hw-tool-item {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12rpx;
+	padding: 8rpx 16rpx;
+	border-radius: 16rpx;
+}
+.hw-tool-item.recording {
+	background: rgba(240, 160, 0, 0.1);
+	border-radius: 16rpx;
+	animation: hw-pulse 1.2s infinite;
+}
+.hw-tool-icon {
+	width: 56rpx;
+	height: 56rpx;
+}
+.hw-tool-label {
+	font-size: 24rpx;
+	color: #666666;
+}
+.hw-tool-item.recording .hw-tool-label {
+	color: #f0a000;
+}
+@keyframes hw-pulse {
+	0% { transform: scale(1); }
+	50% { transform: scale(1.08); }
+	100% { transform: scale(1); }
+}
+
+/* 隐藏：手写识别（手动录入）样式 — 暂时隐藏，代码保留不删
+.hw-manual {
+	padding: 16rpx 0;
+}
+.hw-input-mode {
+	display: flex;
+	gap: 20rpx;
+	padding: 20rpx 0;
+}
+.hw-mode-btn {
+	background: #f0a000;
+	color: #fff;
+	border: none !important;
+	border-radius: 40rpx !important;
+	font-size: 30rpx;
+	padding: 5rpx;
+}
+.hw-mode-manual {
+	background: #e5e7eb !important;
+	color: #374151 !important;
+}
+*/
+</style>

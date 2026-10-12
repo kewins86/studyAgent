@@ -1,0 +1,51 @@
+function onRecognizeAlbum() {
+	if (recordStatus.value) return
+	uni.chooseImage({
+		count: 1,
+		sizeType: ['compressed'],
+		sourceType: ['album'],
+		success: async (res) => {
+			const tempPath = res.tempFilePaths[0]
+			uni.compressImage({
+				src: tempPath,
+				quality: 50,
+				success: async (cres) => { await doRecognizeImage(cres.tempFilePath) },
+				fail: async () => { await doRecognizeImage(tempPath) }
+			})
+		}
+	})
+}
+
+// ============ 语音录入 ASR（与 chat 页实现一致）============
+const isRecording = ref(false)
+const recordStatus = ref('')  // '' | 'recording' | 'transcribing'
+
+// #ifndef H5
+const recorderManager = uni.getRecorderManager ? uni.getRecorderManager() : null
+if (recorderManager) recorderManager.onStop((res) => {
+	if (res.duration < 500) {
+		recordStatus.value = ''
+		isRecording.value = false
+		return
+	}
+	recordStatus.value = 'transcribing'
+	transcribeAudio(res.tempFilePath)
+})
+if (recorderManager) recorderManager.onError((err) => {
+	console.error('[录音] 错误', err)
+	uni.showToast({ title: '录音失败', icon: 'none' })
+	recordStatus.value = ''
+	isRecording.value = false
+})
+// #endif
+
+// #ifdef H5
+let h5AudioContext = null
+let h5MediaStream = null
+let h5ScriptProcessor = null
+let h5PcmChunks = []
+let h5RecordStartTime = 0
+let h5StreamSigPromise = null
+let h5StreamOnResult = null
+let h5StreamOnDone = null
+

@@ -1,0 +1,33 @@
+async function submitStepAnswer(msgIndex, stepIndex) {
+		const msg = messages.value[msgIndex]
+		if (!msg || !msg.steps || !msg.steps[stepIndex]) return
+		const step = msg.steps[stepIndex]
+		if (!step.voiceText) return
+		step.checking = true
+		step.hint = ''
+		try {
+		const res = await apiChatCheck(step.question, step.answer, step.voiceText)
+		const d = res && res.data ? res.data : res
+		if (d.correct) {
+			// 标记当前步已答对
+			step.solved = true
+			// 如果还有下一步，前进一步
+			if (msg.visibleStep < msg.steps.length - 1) {
+				msg.visibleStep++
+			} else {
+				// 全部完成！调后端生成总结
+				fetchStepSummary(msgIndex)
+			}
+			step.hint = ''
+		} else {
+			step.hint = d.hint || '回答不太对哦，再想想？'
+		}
+		scrollToBottom()
+	} catch (e) {
+		step.hint = '判断服务暂时不可用，请重试'
+	} finally {
+		step.checking = false
+	}
+}
+
+/** 全部步骤答完后，调后端生成考点/知识点/注意事项总结 */

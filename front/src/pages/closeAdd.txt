@@ -1,0 +1,7 @@
+function closeAdd() {
+	// 录音中不允许关闭
+	if (recordStatus.value === 'recording' || recordStatus.value === 'transcribing') return
+	showAdd.value = false
+	resetRecognize()
+}
+

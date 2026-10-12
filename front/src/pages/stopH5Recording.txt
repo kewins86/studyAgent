@@ -1,0 +1,138 @@
+function stopH5Recording() {
+		console.log('[录音] H5 停止录音（方案A）')
+		if (h5MediaStream) { h5MediaStream.getTracks().forEach(track => track.stop()) }
+		if (h5ScriptProcessor) { h5ScriptProcessor.disconnect() }
+		if (h5AudioContext) { h5AudioContext.close() }
+
+		const duration = Date.now() - h5RecordStartTime
+		if (duration < 500) {
+			recordStatus.value = ''
+			isRecording.value = false
+			showTools.value = false
+			h5StreamOnDone = null
+			h5StreamOnResult = null
+			return
+		}
+
+		recordStatus.value = 'transcribing'
+		isRecording.value = false
+
+		// 合并全量 PCM
+		const totalLength = h5PcmChunks.reduce((sum, chunk) => sum + chunk.length, 0)
+		if (totalLength === 0) {
+			recordStatus.value = ''
+			showTools.value = false
+			return
+		}
+		const mergedPcm = new Int16Array(totalLength)
+		let offset = 0
+		for (const chunk of h5PcmChunks) {
+			mergedPcm.set(chunk, offset)
+			offset += chunk.length
+		}
+		const pcmBase64 = pcmToBase64(mergedPcm)
+
+		// 等 WS 就绪后快速分帧发送
+		h5StreamSigPromise.then(ws => {
+			if (ws && ws.readyState === 1) {
+				// WS 已就绪，分帧快速发送
+				const chunkSize = 12288
+				let sentFirst = false
+				for (let i = 0; i < pcmBase64.length; i += chunkSize) {
+					const chunk = pcmBase64.slice(i, i + chunkSize)
+					const frame = {
+						data: {
+							status: sentFirst ? 1 : 0,
+							format: 'audio/L16;rate=16000',
+							encoding: 'raw',
+							audio: chunk
+						}
+					}
+					if (!sentFirst) {
+						frame.common = { app_id: uni.getStorageSync('xfAppId') || '' }
+						frame.business = {
+							domain: 'iat',
+							language: 'zh_cn',
+							accent: 'mandarin',
+							vad_eos: 2000,
+							dwa: 'wpgs'
+						}
+						sentFirst = true
+					}
+					ws.send(JSON.stringify(frame))
+				}
+				// 末帧
+				ws.send(JSON.stringify({
+					data: { status: 2, format: 'audio/L16;rate=16000', encoding: 'raw', audio: '' }
+				}))
+				// WS onclose 会触发 h5StreamOnDone
+			} else {
+				// WS 未就绪，降级走旧全量发送
+				console.warn('[ASR] WS 未就绪，降级全量发送')
+				transcribeAudio(pcmBase64)
+			}
+		})
+}
+// #endif
+
+function stopH5Recording() {
+	if (h5MediaStream) { h5MediaStream.getTracks().forEach(track => track.stop()) }
+	if (h5ScriptProcessor) { h5ScriptProcessor.disconnect() }
+	if (h5AudioContext) { h5AudioContext.close() }
+
+	const duration = Date.now() - h5RecordStartTime
+	if (duration < 500) {
+		recordStatus.value = ''
+		isRecording.value = false
+		h5StreamOnDone = null
+		h5StreamOnResult = null
+		return
+	}
+
+	recordStatus.value = 'transcribing'
+	isRecording.value = false
+
+	const totalLength = h5PcmChunks.reduce((sum, chunk) => sum + chunk.length, 0)
+	if (totalLength === 0) {
+		recordStatus.value = ''
+		return
+	}
+	const mergedPcm = new Int16Array(totalLength)
+	let offset = 0
+	for (const chunk of h5PcmChunks) {
+		mergedPcm.set(chunk, offset)
+		offset += chunk.length
+	}
+	const pcmBase64 = pcmToBase64(mergedPcm)
+
+	h5StreamSigPromise.then(ws => {
+		if (ws && ws.readyState === 1) {
+			const chunkSize = 12288
+			let sentFirst = false
+			for (let i = 0; i < pcmBase64.length; i += chunkSize) {
+				const chunk = pcmBase64.slice(i, i + chunkSize)
+				const frame = {
+					data: {
+						status: sentFirst ? 1 : 0,
+						format: 'audio/L16;rate=16000',
+						encoding: 'raw',
+						audio: chunk
+					}
+				}
+				if (!sentFirst) {
+					frame.common = { app_id: uni.getStorageSync('xfAppId') || '' }
+					frame.business = { domain: 'iat', language: 'zh_cn', accent: 'mandarin', vad_eos: 2000, dwa: 'wpgs' }
+					sentFirst = true
+				}
+				ws.send(JSON.stringify(frame))
+			}
+			ws.send(JSON.stringify({ data: { status: 2, format: 'audio/L16;rate=16000', encoding: 'raw', audio: '' } }))
+		} else {
+			console.warn('[ASR] WS 未就绪，降级全量发送')
+			transcribeAudio(pcmBase64)
+		}
+	})
+}
+// #endif
+
+// 读取文件为 base64（兼容 H5/App）

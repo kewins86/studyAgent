@@ -1,0 +1,5 @@
+function toggleTools() {
+		if (recordStatus.value === 'recording' || recordStatus.value === 'transcribing') return
+		showTools.value = !showTools.value
+}
+

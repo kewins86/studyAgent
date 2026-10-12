@@ -1,0 +1,18 @@
+function stopStepRecording(msgIndex, stepIndex) {
+		const msg = messages.value[msgIndex]
+		const step = msg.steps[stepIndex]
+		step.recording = false
+
+		// #ifdef H5
+		stopH5RecordingForStep(msgIndex, stepIndex)
+		// #endif
+
+		// #ifndef H5
+		if (recorderManager) {
+			recorderManager.stop()
+		}
+		// #endif
+}
+
+// H5 停止录音后转写（复用 PCM 逻辑，但结果导向步骤而非 question 输入框）
+// #ifdef H5

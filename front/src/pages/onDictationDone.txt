@@ -1,0 +1,17 @@
+async function onDictationDone(item) {
+	uni.chooseImage({
+		count: 1,
+		sizeType: ['compressed'],
+		sourceType: ['album', 'camera'],
+		success: async (imgRes) => {
+			const tempPath = imgRes.tempFilePaths[0]
+			uni.compressImage({
+				src: tempPath,
+				quality: 40,
+				success: async (cres) => { await uploadAndMarkDictation(item, cres.tempFilePath) },
+				fail: async () => { await uploadAndMarkDictation(item, tempPath) }
+			})
+		}
+	})
+}
+

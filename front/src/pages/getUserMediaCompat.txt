@@ -1,0 +1,192 @@
+	function getUserMediaCompat(constraints) {
+		if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+			return navigator.mediaDevices.getUserMedia(constraints)
+		}
+		if (navigator.webkitGetUserMedia) {
+			return new Promise((resolve, reject) => {
+				navigator.webkitGetUserMedia(constraints, resolve, reject)
+			})
+		}
+		return Promise.reject(new Error('getUserMedia not supported'))
+	}
+
+	if (!navigator.mediaDevices && !navigator.webkitGetUserMedia) {
+		uni.showToast({ title: '当前浏览器不支持录音', icon: 'none' })
+		return
+	}
+
+	// 方案A：录音开始时并行预连 WS + 取麦克风，录音期间只累积 PCM 不发送
+	h5StreamOnResult = onResult || null
+	h5StreamOnDone = onDone || null
+	h5PcmChunks = []
+	h5RecordStartTime = Date.now()
+
+	// 并行任务1：拿签名 + 建 WS（不传音频）
+	h5StreamSigPromise = getAsrSignature().then(sigRes => {
+		if (!sigRes || sigRes.code !== 0) {
+			console.error('[ASR] 获取签名失败')
+			return null
+		}
+		const sig = sigRes.data
+		uni.setStorageSync('xfAppId', sig.appId || '')
+		const wsUrl = 'wss://' + sig.host + sig.path + '?authorization=' + sig.authorization + '&date=' + sig.date + '&host=' + sig.host
+		return new Promise((resolve) => {
+			try {
+				const ws = new WebSocket(wsUrl)
+				ws.onopen = () => {
+					console.log('[ASR] 预连 WS 已就绪')
+					resolve(ws)
+				}
+				ws.onmessage = (event) => {
+					try {
+						const data = JSON.parse(event.data)
+						if (data.code !== 0 && data.code !== undefined) {
+							console.warn('[ASR] 错误码', data.code, data.message)
+							return
+						}
+						const result = data.data && data.data.result
+						if (result && result.ws) {
+							let text = ''
+							for (const w of result.ws) {
+								if (w.cw) for (const c of w.cw) text += c.w
+							}
+							if (text && h5StreamOnResult) h5StreamOnResult(text)
+						}
+					} catch (e) {}
+				}
+				ws.onerror = (e) => {
+					console.error('[ASR] WS 错误', e)
+					resolve(null)
+				}
+				ws.onclose = () => {
+					console.log('[ASR] WS 关闭')
+					if (h5StreamOnDone) {
+						h5StreamOnDone()
+						h5StreamOnDone = null
+					}
+				}
+			} catch (e) {
+				console.error('[ASR] WS 创建失败', e)
+				resolve(null)
+			}
+		})
+	}).catch(() => null)
+
+	// 并行任务2：获取麦克风，开始录音
+	try {
+		const stream = await getUserMediaCompat({ audio: true })
+		const audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 })
+		const source = audioContext.createMediaStreamSource(stream)
+		const processor = audioContext.createScriptProcessor(4096, 1, 1)
+
+		processor.onaudioprocess = (e) => {
+			const inputData = e.inputBuffer.getChannelData(0)
+			const pcmData = new Int16Array(inputData.length)
+			for (let i = 0; i < inputData.length; i++) {
+				pcmData[i] = Math.max(-1, Math.min(1, inputData[i])) * 0x7FFF
+			}
+			h5PcmChunks.push(pcmData)
+			// 不发送，只累积
+		}
+
+		source.connect(processor)
+		processor.connect(audioContext.destination)
+
+		h5AudioContext = audioContext
+		h5MediaStream = stream
+		h5ScriptProcessor = processor
+
+		isRecording.value = true
+		recordStatus.value = 'recording'
+		console.log('[录音] H5 录音开始（方案A：预连WS + 累积PCM）')
+	} catch (err) {
+		console.error('[录音] H5 权限失败', err)
+		uni.showToast({ title: '无法访问麦克风，请检查权限', icon: 'none' })
+		h5StreamOnResult = null
+		h5StreamOnDone = null
+	}
+}
+
+	function getUserMediaCompat(constraints) {
+		if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+			return navigator.mediaDevices.getUserMedia(constraints)
+		}
+		if (navigator.webkitGetUserMedia) {
+			return new Promise((resolve, reject) => {
+				navigator.webkitGetUserMedia(constraints, resolve, reject)
+			})
+		}
+		return Promise.reject(new Error('getUserMedia not supported'))
+	}
+
+	h5StreamOnResult = onResult || null
+	h5StreamOnDone = onDone || null
+	h5PcmChunks = []
+	h5RecordStartTime = Date.now()
+
+	h5StreamSigPromise = getAsrSignature().then(sigRes => {
+		if (!sigRes || sigRes.code !== 0) {
+			console.error('[ASR] 获取签名失败')
+			return null
+		}
+		const sig = sigRes.data
+		uni.setStorageSync('xfAppId', sig.appId || '')
+		const wsUrl = 'wss://' + sig.host + sig.path + '?authorization=' + sig.authorization + '&date=' + sig.date + '&host=' + sig.host
+		return new Promise((resolve) => {
+			try {
+				const ws = new WebSocket(wsUrl)
+				ws.onopen = () => { resolve(ws) }
+				ws.onmessage = (event) => {
+					try {
+						const data = JSON.parse(event.data)
+						if (data.code !== 0 && data.code !== undefined) return
+						const result = data.data && data.data.result
+						if (result && result.ws) {
+							let text = ''
+							for (const w of result.ws) {
+								if (w.cw) for (const c of w.cw) text += c.w
+							}
+							if (text && h5StreamOnResult) h5StreamOnResult(text)
+						}
+					} catch (e) {}
+				}
+				ws.onerror = () => { resolve(null) }
+				ws.onclose = () => {
+					if (h5StreamOnDone) {
+						h5StreamOnDone()
+						h5StreamOnDone = null
+					}
+				}
+			} catch (e) {
+				resolve(null)
+			}
+		})
+	}).catch(() => null)
+
+	try {
+		const stream = await getUserMediaCompat({ audio: true })
+		const audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 })
+		const source = audioContext.createMediaStreamSource(stream)
+		const processor = audioContext.createScriptProcessor(4096, 1, 1)
+		processor.onaudioprocess = (e) => {
+			const inputData = e.inputBuffer.getChannelData(0)
+			const pcmData = new Int16Array(inputData.length)
+			for (let i = 0; i < inputData.length; i++) {
+				pcmData[i] = Math.max(-1, Math.min(1, inputData[i])) * 0x7FFF
+			}
+			h5PcmChunks.push(pcmData)
+		}
+		source.connect(processor)
+		processor.connect(audioContext.destination)
+		h5AudioContext = audioContext
+		h5MediaStream = stream
+		h5ScriptProcessor = processor
+		isRecording.value = true
+		recordStatus.value = 'recording'
+	} catch (err) {
+		uni.showToast({ title: '无法访问麦克风，请检查权限', icon: 'none' })
+		h5StreamOnResult = null
+		h5StreamOnDone = null
+	}
+}
+

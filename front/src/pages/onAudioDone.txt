@@ -1,0 +1,82 @@
+async function onAudioDone(item) {
+	// #ifdef H5
+	try {
+		const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+		const recorder = new MediaRecorder(stream)
+		const chunks = []
+		recorder.ondataavailable = e => chunks.push(e.data)
+		recorder.onstop = async () => {
+			const blob = new Blob(chunks, { type: 'audio/webm' })
+			const reader = new FileReader()
+			reader.onload = async () => {
+				const dataUrl = reader.result
+				try {
+					const res = await markHomeworkItemDone(item.id, { doneAudio: dataUrl })
+					if (res.code === 0) {
+						uni.showToast({ title: '录音完成！' })
+						loadData()
+					}
+				} catch (e) {
+					uni.showToast({ title: '操作失败', icon: 'none' })
+				}
+			}
+			reader.readAsDataURL(blob)
+			stream.getTracks().forEach(t => t.stop())
+		}
+		uni.showModal({
+			title: '录音',
+			content: '点击确定开始录音，再次点击停止',
+			success: (r) => {
+				if (r.confirm) {
+					recorder.start()
+					uni.showModal({
+						title: '停止录音',
+						content: '录音中... 点击确定停止',
+						success: () => recorder.stop()
+					})
+				}
+			}
+		})
+	} catch (e) {
+		uni.showToast({ title: '麦克风不可用', icon: 'none' })
+	}
+	// #endif
+	// #ifndef H5
+	const rm = uni.getRecorderManager()
+	rm.onStop = async (res) => {
+		try {
+			const r = await new Promise((resolve, reject) => {
+				uni.getFileSystemManager().readFile({
+					filePath: res.tempFilePath,
+					encoding: 'base64',
+					success: resolve,
+					fail: reject
+				})
+			})
+			const b64 = 'data:audio/aac;base64,' + r.data
+			const apiRes = await markHomeworkItemDone(item.id, { doneAudio: b64 })
+			if (apiRes.code === 0) {
+				uni.showToast({ title: '录音完成！' })
+				loadData()
+			}
+		} catch (e) {
+			uni.showToast({ title: '操作失败', icon: 'none' })
+		}
+	}
+	uni.showModal({
+		title: '录音',
+		content: '点击确定开始录音',
+		success: (r) => {
+			if (r.confirm) {
+				rm.start({ format: 'aac', sampleRate: 16000 })
+				uni.showModal({
+					title: '停止录音',
+					content: '录音中... 点击确定停止',
+					success: () => rm.stop()
+				})
+			}
+		}
+	})
+	// #endif
+}
+

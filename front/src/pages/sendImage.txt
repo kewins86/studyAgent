@@ -1,0 +1,36 @@
+async function sendImage(dataUrl, base64) {
+		console.log('[chat] sendImage 调用', { hasDataUrl: !!dataUrl, hasBase64: !!base64, loading: loading.value })
+		if (loading.value) return
+	// 直接发送图片+默认问题，不填输入框
+		messages.value.push({
+		role: 'user',
+		content: '',
+		image: dataUrl
+	})
+		loading.value = true; startLoadingText()
+		cropping.value = true
+		scrollToBottom()
+		try {
+		const res = await chatWithImage('请识别这张图片中的题目，提取题目内容。然后把解题过程分成多个交互步骤，输出JSON数组格式：[{"question":"引导问题","answer":"答案和解析"}]。每步先出一个问题让学生回答，不要直接给答案。至少3步。如果图片中没有明确的题目，请描述图片内容。', base64, sessionId.value)
+		console.log('[chat] 图片返回', res)
+		const d = res && res.data ? res.data : res
+		if (d.sessionId) {
+			sessionId.value = d.sessionId
+			uni.setStorageSync('chatSessionId', d.sessionId)
+		}
+		const imgSteps = parseSteps(d.answer)
+		if (imgSteps) {
+			messages.value.push({ role: 'assistant', subject: d.subject, content: d.answer, steps: imgSteps, visibleStep: 0, originalQuestion: q })
+		} else {
+			messages.value.push({ role: 'assistant', subject: d.subject, content: d.answer || '（AI 返回了空内容）' })
+		}
+	} catch (e) {
+		console.error('[chat] 图片异常', e)
+		messages.value.push({ role: 'assistant', content: '抱歉，图片识别服务暂时不可用，请稍后再试。（' + (e && e.errMsg ? e.errMsg : (e && e.message ? e.message : '未知错误')) + '）' })
+	} finally {
+		loading.value = false; stopLoadingText()
+		cropping.value = false
+		scrollToBottom()
+	}
+}
+

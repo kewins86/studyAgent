@@ -1,0 +1,46 @@
+function onCropImageLoad(e) {
+	// 获取图片在屏幕上的实际渲染位置和尺寸
+		nextTick(() => {
+		// uni-app <image> 在 H5 渲染为 <uni-image>，需取内部真实 <img>
+		let imageEl = document.querySelector('.crop-image img')
+		if (!imageEl) {
+			const uniImg = document.querySelector('.crop-image')
+			if (uniImg && uniImg.querySelector) {
+				imageEl = uniImg.querySelector('img')
+			}
+		}
+		if (!imageEl) {
+			imageEl = document.querySelector('.crop-image')
+		}
+		if (imageEl) {
+			const rect = imageEl.getBoundingClientRect()
+			const natW = imageEl.naturalWidth || rect.width
+			const natH = imageEl.naturalHeight || rect.height
+			console.log('[chat] cropImg layout:', rect, 'natural:', natW, natH)
+			cropImgLayout.value = {
+				x: rect.left,
+				y: rect.top,
+				w: rect.width,
+				h: rect.height,
+				natW,
+				natH
+			}
+			cropBox.value = {
+				x: rect.left + rect.width * 0.1,
+				y: rect.top + rect.height * 0.15,
+				w: rect.width * 0.8,
+				h: rect.height * 0.55
+			}
+			updateCropBoxStyle()
+		} else {
+			cropBox.value = { x: 30, y: 150, w: window.innerWidth - 60, h: 300 }
+			updateCropBoxStyle()
+		}
+	})
+}
+
+// --- 框选框拖动 + 缩放 ---
+// cropTouchStart: { px, py, boxX, boxY, boxW, boxH, mode: 'move'|'tl'|'tr'|'bl'|'br' }
+let cropTouchStart = null
+const HANDLE_SIZE = 30 // 角手柄检测半径（px）
+

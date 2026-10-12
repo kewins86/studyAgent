@@ -1,0 +1,25 @@
+function onCropBoxTouchStart(e) {
+		const touch = e.touches[0]
+		const px = touch.clientX
+		const py = touch.clientY
+		const box = cropBox.value
+
+	// 判断触摸点在哪个角
+		let mode = 'move'
+		if (Math.abs(px - box.x) < HANDLE_SIZE && Math.abs(py - box.y) < HANDLE_SIZE) {
+		mode = 'tl'
+	} else if (Math.abs(px - (box.x + box.w)) < HANDLE_SIZE && Math.abs(py - box.y) < HANDLE_SIZE) {
+		mode = 'tr'
+	} else if (Math.abs(px - box.x) < HANDLE_SIZE && Math.abs(py - (box.y + box.h)) < HANDLE_SIZE) {
+		mode = 'bl'
+	} else if (Math.abs(px - (box.x + box.w)) < HANDLE_SIZE && Math.abs(py - (box.y + box.h)) < HANDLE_SIZE) {
+		mode = 'br'
+	}
+
+		cropTouchStart = {
+		px, py,
+		boxX: box.x, boxY: box.y, boxW: box.w, boxH: box.h,
+		mode
+	}
+}
+

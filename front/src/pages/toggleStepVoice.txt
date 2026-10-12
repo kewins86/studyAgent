@@ -1,0 +1,15 @@
+function toggleStepVoice(msgIndex, stepIndex) {
+		const msg = messages.value[msgIndex]
+		if (!msg || !msg.steps || !msg.steps[stepIndex]) return
+		const step = msg.steps[stepIndex]
+		if (step.checking) return
+
+		if (step.recording) {
+			// 停止录音
+			stopStepRecording(msgIndex, stepIndex)
+		} else {
+			// 开始录音
+			startStepRecording(msgIndex, stepIndex)
+		}
+}
+

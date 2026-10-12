@@ -1,0 +1,136 @@
+async function send() {
+		const q = question.value.trim()
+		if (!q || loading.value) return
+		showTools.value = false
+
+		messages.value.push({ role: 'user', content: q })
+		question.value = ''
+		loading.value = true; startLoadingText()
+		scrollToBottom()
+
+	// 流式输出：先创建一个临时消息逐字显示，完成后尝试解析步骤
+		const streamMsg = { role: 'assistant', subject: '', content: '', streaming: true }
+		messages.value.push(streamMsg)
+		scrollToBottom()
+
+	// 检测 fetch + ReadableStream 是否可用（微信内置浏览器/旧 WebView 可能不支持）
+		const canStream = typeof fetch === 'function' && typeof globalThis !== 'undefined' && typeof globalThis.ReadableStream !== 'undefined'
+
+		if (!canStream) {
+		// 不支持流式，直接走普通接口
+		try {
+			const res = await chat(q, sessionId.value)
+			const d = res && res.data ? res.data : res
+			if (d.sessionId) {
+				sessionId.value = d.sessionId
+				uni.setStorageSync('chatSessionId', d.sessionId)
+			}
+			streamMsg.streaming = false
+			streamMsg.subject = d.subject || ''
+			const steps = parseSteps(d.answer)
+			if (steps) {
+				streamMsg.steps = steps; streamMsg.visibleStep = 0; streamMsg.content = ''; streamMsg.originalQuestion = q
+			} else {
+				streamMsg.content = d.answer || '（AI 返回了空内容）'
+			}
+		} catch (e2) {
+			streamMsg.streaming = false
+			streamMsg.content = '抱歉，AI 服务暂时不可用，请稍后再试。'
+		} finally {
+			loading.value = false; stopLoadingText()
+			scrollToBottom()
+		}
+		return
+	}
+
+		try {
+		const token = uni.getStorageSync('token') || ''
+		const baseURL = 'http://192.168.71.202:8080'
+		const resp = await fetch(baseURL + '/api/chat/stream', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', 'satoken': token },
+			body: JSON.stringify({ question: q, sessionId: sessionId.value })
+		})
+
+		const reader = resp.body.getReader()
+		const decoder = new TextDecoder()
+		let buffer = ''
+		let fullText = ''
+		let subject = ''
+
+		while (true) {
+			const { done, value } = await reader.read()
+			if (done) break
+			buffer += decoder.decode(value, { stream: true })
+			const lines = buffer.split('\n')
+			buffer = lines.pop() || ''
+
+			let currentEvent = ''
+			let dataBuffer = ''
+			for (const line of lines) {
+				if (line.startsWith('event:')) {
+					currentEvent = line.substring(6).trim()
+					dataBuffer = ''
+				} else if (line.startsWith('data:')) {
+					if (dataBuffer) dataBuffer += '\n'
+					dataBuffer += line.substring(5)
+				} else if (line === '' && currentEvent) {
+					const data = dataBuffer
+					if (currentEvent === 'subject') {
+						subject = data
+						streamMsg.subject = subject
+					} else if (currentEvent === 'delta') {
+						fullText += data
+						// 不显示原始 JSON，只显示加载提示
+						streamMsg.content = '🤔 知鹿老师正在思考…'
+						scrollToBottom()
+					} else if (currentEvent === 'done') {
+						if (data) fullText = data
+					} else if (currentEvent === 'error') {
+						throw new Error(data)
+					}
+					currentEvent = ''
+					dataBuffer = ''
+				}
+			}
+		}
+		// 流式结束：尝试解析步骤 JSON
+		streamMsg.streaming = false
+		streamMsg.content = ''
+		const steps = parseSteps(fullText)
+		if (steps) {
+			streamMsg.steps = steps
+			streamMsg.visibleStep = 0
+			streamMsg.originalQuestion = q
+		} else {
+			streamMsg.content = fullText || '（AI 返回了空内容）'
+		}
+
+	} catch (e) {
+		console.error('[chat] 流式异常，降级普通接口', e)
+		streamMsg.streaming = false
+		streamMsg.content = '网络异常，尝试普通模式…'
+		// 降级：调用普通接口
+		try {
+			const res = await chat(q, sessionId.value)
+			const d = res && res.data ? res.data : res
+			if (d.sessionId) {
+				sessionId.value = d.sessionId
+				uni.setStorageSync('chatSessionId', d.sessionId)
+			}
+			const steps = parseSteps(d.answer)
+			if (steps) {
+				streamMsg.steps = steps; streamMsg.visibleStep = 0; streamMsg.content = ''; streamMsg.subject = d.subject
+			} else {
+				streamMsg.content = d.answer || '（AI 返回了空内容）'
+				streamMsg.subject = d.subject
+			}
+		} catch (e2) {
+			streamMsg.content = '抱歉，AI 服务暂时不可用，请稍后再试。'
+		}
+	} finally {
+		loading.value = false; stopLoadingText()
+		scrollToBottom()
+	}
+}
+

@@ -1,0 +1,3 @@
+async function startH5Recording(onResult, onDone) {
+	console.log('[ASR] 方案 A（讯飞预连 WS + 录完快发）')
+async function startH5Recording(onResult, onDone) {

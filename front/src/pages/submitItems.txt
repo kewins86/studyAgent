@@ -1,0 +1,23 @@
+// async function submitItems() {
+// 	const valid = addRows.value.filter(r => r.content.trim())
+// 	if (!valid.length) {
+// 		uni.showToast({ title: '请填写作业内容', icon: 'none' })
+// 		return
+// 	}
+// 	try {
+// 		const res = await submitHomeworkItems(valid)
+// 		if (res.code === 0) {
+// 			uni.showToast({ title: '录入成功' })
+// 			showAdd.value = false
+// 			addRows.value = [{ subject: '语文', itemType: 'written', content: '' }]
+// 			manualMode.value = false
+// 			loadData()
+// 		} else {
+// 			uni.showToast({ title: res.message || '录入失败', icon: 'none' })
+// 		}
+// 	} catch (e) {
+// 		uni.showToast({ title: '录入失败', icon: 'none' })
+// 	}
+// }
+// ============ 手写识别代码结束 ============
+

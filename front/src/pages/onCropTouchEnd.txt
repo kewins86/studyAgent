@@ -1,0 +1,4 @@
+function onCropTouchEnd() {
+		cropTouchStart = null
+}
+

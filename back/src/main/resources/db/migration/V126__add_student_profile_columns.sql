@@ -1,0 +1,6 @@
+-- V126: student_profiles 的扩展列（grade_sep / nickname / academic_level / ai_summary / ai_tags）
+-- 现已由早期迁移覆盖：
+--   grade_sep / nickname / academic_level  -> V4__add_profile_fields
+--   ai_summary                            -> V5__add_ai_summary_to_profile
+--   ai_tags                               -> V6__add_ai_tags_to_profile
+-- 此处不再重复 ADD，避免 MySQL 报 Duplicate column。保留文件仅为版本号连续。

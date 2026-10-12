@@ -1,0 +1,4 @@
+function updateCropBoxStyle() {
+		cropBoxStyle.value = `left:${cropBox.value.x}px;top:${cropBox.value.y}px;width:${cropBox.value.w}px;height:${cropBox.value.h}px;`
+}
+

@@ -1,0 +1,84 @@
+server:
+  port: 8080
+  max-http-request-header-size: 100KB
+  tomcat:
+    max-http-form-post-size: 50MB
+
+spring:
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+  application:
+    name: k9-edu-agent
+  # ========== 数据库：本地 MySQL 8（~/tools/mysql，上线用）==========
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/k9_edu?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: k9
+    password: k9edu123
+  # ---------- 开发期 H2（复用已录入题库的 H2 文件 ~/k9-edu-data/edu）----------
+  # datasource:
+  #   url: jdbc:h2:file:~/k9-edu-data/edu;MODE=MySQL;DATABASE_TO_LOWER=TRUE;AUTO_SERVER=TRUE
+  #   driver-class-name: org.h2.Driver
+  #   username: sa
+  #   password: ""
+  # ========== Flyway 自动建表 ==========
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+  # ========== H2 控制台（仅 H2 模式可用） ==========
+  # h2:
+  #   console:
+  #     enabled: true
+  #     path: /h2-console
+  jackson:
+    time-zone: Asia/Shanghai
+    date-format: yyyy-MM-dd HH:mm:ss
+
+# ========== MyBatis-Plus ==========
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# ========== Sa-Token ==========
+sa-token:
+  token-name: satoken
+  timeout: 2592000   # 30天
+  is-concurrent: true
+  is-share: true
+  token-style: uuid
+  is-log: false
+
+# ========== LLM 配置（deeplexcloud，OpenAI 兼容接口） ==========
+llm:
+  base-url: https://www.deeplexcloud.cn/v1
+  api-key: ${DEEPSEEK_API_KEY:sk-3jPI3RZPhCp8UzaxvUQyiC6vA_v7eMYSKkReuneD7dq_4OU_}
+  model: DeepSeek-V4-Flash
+  vision-model: gpt-5.4-mini-2
+  timeout-seconds: 60
+
+# ========== 讯飞 ASR 配置（语音听写） ==========
+iflytek:
+  app-id: ${IFLYTEK_APP_ID:e391b43d}
+  api-key: ${IFLYTEK_API_KEY:ef85c0e6678fe57f84cf8ca2769b4ee0}
+  api-secret: ${IFLYTEK_API_SECRET:NTMwNmYwZWE5ODY1ZDA1NWZmODAwMDEx}
+  host: ws-api.xfyun.cn
+  path: /v2/iat
+  # 流式听写参数
+  sample-rate: 16000
+  encoding: raw
+  language: zh_cn
+  domain: iat
+
+logging:
+  level:
+    com.k9edu: debug

@@ -1,0 +1,4 @@
+function previewImg(current, urls) {
+	uni.previewImage({ current, urls })
+}
+

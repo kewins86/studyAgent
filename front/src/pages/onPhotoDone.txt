@@ -1,0 +1,17 @@
+async function onPhotoDone(item) {
+	uni.chooseImage({
+		count: 1,
+		sizeType: ['compressed'],
+		sourceType: ['album', 'camera'],
+		success: async (res) => {
+			const tempPath = res.tempFilePaths[0]
+			uni.compressImage({
+				src: tempPath,
+				quality: 40,
+				success: async (cres) => { await uploadAndMark(item, cres.tempFilePath) },
+				fail: async () => { await uploadAndMark(item, tempPath) }
+			})
+		}
+	})
+}
+

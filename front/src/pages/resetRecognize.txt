@@ -1,0 +1,8 @@
+function resetRecognize() {
+	recognized.value = []
+	recognizing.value = false
+	// 隐藏：手写识别
+	// manualMode.value = false
+}
+
+// ============ 家作图片识别（拍照 / 相册共用）============
